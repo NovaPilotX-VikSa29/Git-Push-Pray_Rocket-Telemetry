@@ -3,7 +3,7 @@ import time
 import os
 
 from telemetry import Telemetry
-from landing_predictor import predict_landing
+from recovery.landing_predictor import predict_landing
 
 
 # ============================================================
