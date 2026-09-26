@@ -16,29 +16,24 @@ class Telemetry:
         parachute_deployed
     ):
 
-        self.time = time
-        self.altitude = altitude
-        self.latitude = latitude
-        self.longitude = longitude
-        self.velocity = velocity
-        self.temperature = temperature
-        self.pressure = pressure
-        self.wind_speed = wind_speed
-        self.wind_direction = wind_direction
-        self.acceleration = acceleration
-        self.descent_rate = descent_rate
-        self.parachute_deployed = parachute_deployed
+        self.time = float(time)
+        self.altitude = float(altitude)
 
-    def display(self):
+        self.latitude = float(latitude)
+        self.longitude = float(longitude)
 
-        print(
-            f"Time: {self.time:.1f}s | "
-            f"Altitude: {self.altitude:.2f}m | "
-            f"Latitude: {self.latitude:.6f} | "
-            f"Longitude: {self.longitude:.6f} | "
-            f"Velocity: {self.velocity:.2f}m/s | "
-            f"Wind: {self.wind_speed:.2f}m/s"
-        )
+        self.velocity = float(velocity)
+
+        self.temperature = float(temperature)
+        self.pressure = float(pressure)
+
+        self.wind_speed = float(wind_speed)
+        self.wind_direction = float(wind_direction)
+
+        self.acceleration = float(acceleration)
+        self.descent_rate = float(descent_rate)
+
+        self.parachute_deployed = bool(parachute_deployed)
 
     def to_dict(self):
 
@@ -56,3 +51,14 @@ class Telemetry:
             "descent_rate": self.descent_rate,
             "parachute_deployed": self.parachute_deployed
         }
+
+    def display(self):
+
+        print(
+            f"Time: {self.time:.1f}s | "
+            f"Altitude: {self.altitude:.2f}m | "
+            f"Latitude: {self.latitude:.6f} | "
+            f"Longitude: {self.longitude:.6f} | "
+            f"Velocity: {self.velocity:.2f}m/s | "
+            f"Wind: {self.wind_speed:.2f}m/s"
+        )
