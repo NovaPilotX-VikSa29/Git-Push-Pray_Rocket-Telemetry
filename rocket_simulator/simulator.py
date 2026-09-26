@@ -1,29 +1,46 @@
 import pandas as pd
 import time
 import os
+import sys
 
 from telemetry import Telemetry
-from recovery.landing_predictor import predict_landing
 
 
 # ============================================================
-# CONFIGURATION
+# PROJECT PATH
 # ============================================================
 
 BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)
 )
 
+PROJECT_DIR = os.path.dirname(BASE_DIR)
+
+sys.path.append(PROJECT_DIR)
+
+
+# Import landing predictor from the recovery folder
+from recovery.landing_predictor import predict_landing
+
+
+# ============================================================
+# CSV FILE
+# ============================================================
+
 CSV_FILE = os.path.join(
     BASE_DIR,
     "real_values.csv"
 )
 
-# True  -> replay with delay
-# False -> run immediately
+
+# ============================================================
+# SIMULATION SETTINGS
+# ============================================================
+
 REAL_TIME = True
 
-# 0.1 = 10x faster
+# 0.1 means:
+# 1 second of rocket flight = 0.1 seconds real time
 TIME_SCALE = 0.1
 
 
@@ -37,52 +54,27 @@ class RocketSimulator:
 
         self.csv_file = csv_file
 
-        # ----------------------------------------------------
-        # Load telemetry CSV
-        # ----------------------------------------------------
-
-        self.data = pd.read_csv(csv_file)
-
-        # ----------------------------------------------------
-        # Current telemetry
-        # ----------------------------------------------------
+        self.data = pd.read_csv(
+            csv_file
+        )
 
         self.current_data = None
-
         self.current_telemetry = None
-
-        # ----------------------------------------------------
-        # Current landing prediction
-        # ----------------------------------------------------
-
         self.current_prediction = None
-
-        # ----------------------------------------------------
-        # Flight status
-        # ----------------------------------------------------
 
         self.phase = "READY"
 
         self.apogee_detected = False
-
         self.parachute_deployed = False
-
         self.landed = False
 
-        # ----------------------------------------------------
-        # Flight information
-        # ----------------------------------------------------
-
         self.max_altitude = 0.0
-
         self.previous_altitude = None
 
         print("Rocket simulator initialized.")
-
         print(
             f"Loaded {len(self.data)} telemetry records."
         )
-
         print()
 
 
@@ -108,8 +100,7 @@ class RocketSimulator:
             "parachute_deployed"
         ]
 
-        # Convert string to boolean
-
+        # Convert CSV string to boolean
         if isinstance(parachute, str):
 
             parachute = (
@@ -117,14 +108,14 @@ class RocketSimulator:
                 in ["true", "1", "yes"]
             )
 
-        # Initial row
 
+        # First telemetry record
         if self.previous_altitude is None:
 
             return "READY"
 
-        # Landing
 
+        # Landing detection
         if (
             altitude <= 1
             and abs(velocity) < 2
@@ -132,14 +123,14 @@ class RocketSimulator:
 
             return "LANDED"
 
-        # Parachute descent
 
+        # Parachute descent
         if parachute:
 
             return "PARACHUTE DESCENT"
 
-        # Descent
 
+        # Descent
         if (
             descent_rate > 0
             or velocity < 0
@@ -147,17 +138,18 @@ class RocketSimulator:
 
             return "DESCENT"
 
-        # Apogee
 
+        # Apogee
         if abs(velocity) < 2:
 
             return "APOGEE"
 
-        # Ascent
 
+        # Ascent
         if velocity > 0:
 
             return "ASCENT"
+
 
         return "FLIGHT"
 
@@ -172,12 +164,14 @@ class RocketSimulator:
             "parachute_deployed"
         ]
 
+        # Convert string boolean
         if isinstance(parachute, str):
 
             parachute = (
                 parachute.lower()
                 in ["true", "1", "yes"]
             )
+
 
         return Telemetry(
 
@@ -227,7 +221,7 @@ class RocketSimulator:
 
 
         # ----------------------------------------------------
-        # UPDATE MAXIMUM ALTITUDE
+        # Maximum altitude
         # ----------------------------------------------------
 
         if altitude > self.max_altitude:
@@ -243,14 +237,12 @@ class RocketSimulator:
 
             if self.previous_altitude is not None:
 
-                if (
-                    altitude
-                    < self.previous_altitude
-                ):
+                if altitude < self.previous_altitude:
 
                     self.apogee_detected = True
 
                     print()
+
                     print(
                         "🚀 APOGEE DETECTED!"
                     )
@@ -278,6 +270,7 @@ class RocketSimulator:
                 in ["true", "1", "yes"]
             )
 
+
         if (
             parachute
             and not self.parachute_deployed
@@ -286,14 +279,16 @@ class RocketSimulator:
             self.parachute_deployed = True
 
             print()
+
             print(
                 "🪂 PARACHUTE DEPLOYED!"
             )
+
             print()
 
 
         # ----------------------------------------------------
-        # DETERMINE PHASE
+        # DETERMINE FLIGHT PHASE
         # ----------------------------------------------------
 
         self.phase = (
@@ -313,9 +308,11 @@ class RocketSimulator:
             self.landed = True
 
             print()
+
             print(
                 "🛬 ROCKET LANDED!"
             )
+
             print()
 
 
@@ -338,11 +335,10 @@ class RocketSimulator:
             row["descent_rate"]
         )
 
-        # Person 2's predictor requires
-        # positive descent rate.
-        #
-        # Therefore we only predict while
-        # the rocket is actually descending.
+
+        # Predictor requires:
+        # altitude > 0
+        # descent_rate > 0
 
         if (
             altitude > 0
@@ -357,11 +353,13 @@ class RocketSimulator:
                     .to_dict()
                 )
 
+
                 self.current_prediction = (
                     predict_landing(
                         telemetry_dict
                     )
                 )
+
 
             except ValueError as error:
 
@@ -371,10 +369,7 @@ class RocketSimulator:
                 )
 
 
-        # ----------------------------------------------------
-        # STORE PREVIOUS ALTITUDE
-        # ----------------------------------------------------
-
+        # Store altitude for next row
         self.previous_altitude = altitude
 
 
@@ -387,6 +382,7 @@ class RocketSimulator:
         telemetry = (
             self.current_telemetry
         )
+
 
         print(
             f"TIME: {telemetry.time:6.1f} s | "
@@ -408,33 +404,40 @@ class RocketSimulator:
 
             return
 
+
         prediction = (
             self.current_prediction
         )
 
+
         print(
             "   📍 PREDICTED LANDING:"
         )
+
 
         print(
             f"      Latitude  : "
             f"{prediction['latitude']:.6f}"
         )
 
+
         print(
             f"      Longitude : "
             f"{prediction['longitude']:.6f}"
         )
+
 
         print(
             f"      ETA       : "
             f"{prediction['time_to_landing']:.2f} s"
         )
 
+
         print(
             f"      Drift     : "
             f"{prediction['total_drift']:.2f} m"
         )
+
 
         print(
             f"      Uncertainty: "
@@ -468,13 +471,11 @@ class RocketSimulator:
 
         print()
 
+
         previous_time = None
 
 
-        # ----------------------------------------------------
-        # REPLAY CSV
-        # ----------------------------------------------------
-
+        # Process every telemetry record
         for _, row in self.data.iterrows():
 
             current_time = float(
@@ -483,7 +484,7 @@ class RocketSimulator:
 
 
             # ------------------------------------------------
-            # SIMULATION DELAY
+            # REAL-TIME DELAY
             # ------------------------------------------------
 
             if previous_time is not None:
@@ -493,12 +494,14 @@ class RocketSimulator:
                     - previous_time
                 )
 
+
                 if REAL_TIME:
 
                     time.sleep(
                         time_difference
                         * TIME_SCALE
                     )
+
 
             previous_time = current_time
 
@@ -511,7 +514,7 @@ class RocketSimulator:
 
 
             # ------------------------------------------------
-            # DISPLAY
+            # DISPLAY CURRENT STATE
             # ------------------------------------------------
 
             self.display_telemetry()
@@ -539,25 +542,30 @@ class RocketSimulator:
 
         print()
 
+
         print(
             f"Total simulation time : "
             f"{self.data['time'].iloc[-1]} s"
         )
+
 
         print(
             f"Maximum altitude      : "
             f"{self.max_altitude:.2f} m"
         )
 
+
         print(
             f"Apogee detected       : "
             f"{self.apogee_detected}"
         )
 
+
         print(
             f"Parachute deployed    : "
             f"{self.parachute_deployed}"
         )
+
 
         print(
             f"Landing detected      : "
@@ -566,7 +574,7 @@ class RocketSimulator:
 
 
         # ----------------------------------------------------
-        # FINAL PREDICTION
+        # FINAL LANDING PREDICTION
         # ----------------------------------------------------
 
         if self.current_prediction:
@@ -575,26 +583,31 @@ class RocketSimulator:
                 self.current_prediction
             )
 
+
             print()
 
             print(
                 "FINAL LANDING PREDICTION"
             )
 
+
             print(
                 f"Latitude  : "
                 f"{prediction['latitude']:.6f}"
             )
+
 
             print(
                 f"Longitude : "
                 f"{prediction['longitude']:.6f}"
             )
 
+
             print(
                 f"Uncertainty : "
                 f"±{prediction['uncertainty_radius']:.2f} m"
             )
+
 
         print()
 
